@@ -25,15 +25,32 @@ function Read-AllLinesRobust {
   }
 }
 
-function Start-GitInRepo {
+function Invoke-GitInRepo {
   param(
     [string] $RepoRoot,
     [Parameter(Mandatory = $true)]
-    [string[]] $Arguments
+    [string[]] $GitArgs,
+    [switch] $SuppressOutput
   )
-  $all = @('-C', $RepoRoot) + $Arguments
-  $p = Start-Process -FilePath 'git.exe' -ArgumentList $all -Wait -PassThru -NoNewWindow
-  return $p.ExitCode
+  $prevEa = $ErrorActionPreference
+  $ErrorActionPreference = 'SilentlyContinue'
+  try {
+    if ($SuppressOutput) {
+      $null = & git.exe -C $RepoRoot @GitArgs 2>$null
+      return $LASTEXITCODE
+    }
+    $pushArgs = @('push', '-u', 'origin')
+    if ($GitArgs.Count -ge 3 -and $GitArgs[0] -eq 'push' -and $GitArgs[1] -eq '-u' -and $GitArgs[2] -eq 'origin') {
+      $branchName = $GitArgs[3]
+      $proc = Start-Process -FilePath 'git.exe' -ArgumentList @('-C', $RepoRoot, 'push', '-u', 'origin', $branchName) -Wait -PassThru -NoNewWindow
+      return $proc.ExitCode
+    }
+    & git.exe -C $RepoRoot @GitArgs
+    return $LASTEXITCODE
+  }
+  finally {
+    $ErrorActionPreference = $prevEa
+  }
 }
 
 function Test-TextLikeFile {
@@ -67,7 +84,7 @@ if (-not (Test-Path -LiteralPath $root -PathType Container)) {
 $repoRoot = [IO.Path]::GetFullPath($PSScriptRoot)
 Push-Location $repoRoot
 try {
-  if ((Start-GitInRepo -RepoRoot $repoRoot -Arguments @('rev-parse', '--is-inside-work-tree')) -ne 0) {
+  if ((Invoke-GitInRepo -RepoRoot $repoRoot -SuppressOutput -GitArgs @('rev-parse', '--is-inside-work-tree')) -ne 0) {
     Write-Error "Not a git repository: $repoRoot"
     exit 3
   }
@@ -153,30 +170,25 @@ try {
   [System.IO.File]::WriteAllLines($outPath, ($header + $snippetLines), $utf8NoBom)
 
   $branch = "auto/snippet-$timestamp-$rand"
-  if ((Start-GitInRepo -RepoRoot $repoRoot -Arguments @('checkout', '-b', $branch)) -ne 0) {
+  if ((Invoke-GitInRepo -RepoRoot $repoRoot -SuppressOutput -GitArgs @('checkout', '-b', $branch)) -ne 0) {
     Write-Error "git checkout -b failed (branch may already exist): $branch"
     exit 7
   }
 
-  if ((Start-GitInRepo -RepoRoot $repoRoot -Arguments @('add', '--', "snippets/$outName")) -ne 0) {
+  if ((Invoke-GitInRepo -RepoRoot $repoRoot -SuppressOutput -GitArgs @('add', '--', "snippets/$outName")) -ne 0) {
     Write-Error "git add failed."
     exit 8
   }
 
   $shortSrc = if ($relSource.Length -gt 120) { $relSource.Substring(0, 117) + '...' } else { $relSource }
   $endLine = $startLine + $snippetLines.Count - 1
-  $commitArgs = @(
-    'commit',
-    '-m', 'chore: import random snippet from external project',
-    '-m', "Source: $shortSrc`nLines: $startLine-$endLine"
-  )
-  if ((Start-GitInRepo -RepoRoot $repoRoot -Arguments $commitArgs) -ne 0) {
+  $commitMsg = "chore: import random snippet | $shortSrc | lines $startLine-$endLine"
+  if ((Invoke-GitInRepo -RepoRoot $repoRoot -SuppressOutput -GitArgs @('commit', '-m', $commitMsg)) -ne 0) {
     Write-Error "git commit failed. Configure user.name and user.email if this is a new repo."
     exit 9
   }
 
-  $pushProc = Start-Process -FilePath 'git.exe' -ArgumentList @('-C', $repoRoot, 'push', '-u', 'origin', $branch) -Wait -PassThru -NoNewWindow
-  if ($pushProc.ExitCode -ne 0) {
+  if ((Invoke-GitInRepo -RepoRoot $repoRoot -GitArgs @('push', '-u', 'origin', $branch)) -ne 0) {
     Write-Error "git push failed. Check credentials, network, and that origin accepts this branch."
     exit 10
   }
