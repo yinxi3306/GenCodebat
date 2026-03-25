@@ -39,8 +39,7 @@ function Invoke-GitInRepo {
       $null = & git.exe -C $RepoRoot @GitArgs 2>$null
       return $LASTEXITCODE
     }
-    $pushArgs = @('push', '-u', 'origin')
-    if ($GitArgs.Count -ge 3 -and $GitArgs[0] -eq 'push' -and $GitArgs[1] -eq '-u' -and $GitArgs[2] -eq 'origin') {
+    if ($GitArgs.Count -ge 4 -and $GitArgs[0] -eq 'push' -and $GitArgs[1] -eq '-u' -and $GitArgs[2] -eq 'origin') {
       $branchName = $GitArgs[3]
       $proc = Start-Process -FilePath 'git.exe' -ArgumentList @('-C', $RepoRoot, 'push', '-u', 'origin', $branchName) -Wait -PassThru -NoNewWindow
       return $proc.ExitCode
