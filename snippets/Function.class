@@ -148,3 +148,18 @@ REPO_ROOT = BACKEND_DIR.parent
     }.get(lvl, ("mysql_other", "MySQL 其它"))
 
 
+
+===== 20260327_133942 =====
+# source: D:\workspace\AIprojectDome\springboot-app\src\main\java\com\example\springbootapp\SpringbootAppApplication.java
+# lines: 2-11
+
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SpringbootAppApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SpringbootAppApplication.class, args);
+    }
+}

@@ -148,3 +148,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 public class GreetingControllerTest {
 
+
+===== 20260327_133942 =====
+# source: D:\workspace\AIprojectDome\springboot-app\src\test\java\com\example\springbootapp\GreetingControllerTest.java
+# lines: 14-23
+
+@AutoConfigureMockMvc
+public class GreetingControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    void greetingReturnsHelloSpringBoot() throws Exception {
+        mockMvc.perform(get("/greeting"))
+                .andExpect(status().isOk())
