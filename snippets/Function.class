@@ -163,3 +163,33 @@ public class SpringbootAppApplication {
         SpringApplication.run(SpringbootAppApplication.class, args);
     }
 }
+
+===== 20260327_134344 =====
+# source: D:\workspace\GenCodebat\_smoke_src\sample.txt
+# lines: 10-19
+
+alpha10
+alpha11
+alpha12
+alpha13
+alpha14
+alpha15
+alpha16
+alpha17
+alpha18
+alpha19
+
+===== 20260327_134358 =====
+# source: D:\workspace\AIprojectDome\springboot-app\src\main\java\com\example\springbootapp\SpringbootAppApplication.java
+# lines: 2-11
+
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SpringbootAppApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SpringbootAppApplication.class, args);
+    }
+}

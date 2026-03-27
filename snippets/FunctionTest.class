@@ -163,3 +163,33 @@ public class GreetingControllerTest {
     void greetingReturnsHelloSpringBoot() throws Exception {
         mockMvc.perform(get("/greeting"))
                 .andExpect(status().isOk())
+
+===== 20260327_134344 =====
+# source: D:\workspace\GenCodebat\_smoke_src\sample.txt
+# lines: 12-21
+
+alpha12
+alpha13
+alpha14
+alpha15
+alpha16
+alpha17
+alpha18
+alpha19
+alpha20
+alpha21
+
+===== 20260327_134358 =====
+# source: D:\workspace\AIprojectDome\backend\log_classify.py
+# lines: 45-54
+
+
+def _mysql(line: str) -> tuple[str, str]:
+    m = _RE_MYSQL_BRACKET.search(line)
+    if not m:
+        return ("mysql_other", "MySQL 其它")
+    lvl = m.group(1)
+    return {
+        "System": ("mysql_system", "MySQL 系统"),
+        "Warning": ("mysql_warning", "MySQL 警告"),
+        "Note": ("mysql_note", "MySQL 备注"),
