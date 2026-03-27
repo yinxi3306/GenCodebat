@@ -133,3 +133,18 @@ public class GreetingController {
     public String greeting() {
         return "Hello, Spring Boot!";
     }
+
+===== 20260327_133916 =====
+# source: D:\workspace\AIprojectDome\springboot-app\src\test\java\com\example\springbootapp\GreetingControllerTest.java
+# lines: 7-16
+
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class GreetingControllerTest {
+

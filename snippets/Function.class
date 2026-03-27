@@ -133,3 +133,18 @@ BACKEND_DIR = Path(__file__).resolve().parent
 load_dotenv(BACKEND_DIR / ".env")
 
 REPO_ROOT = BACKEND_DIR.parent
+
+===== 20260327_133916 =====
+# source: D:\workspace\AIprojectDome\backend\log_classify.py
+# lines: 49-58
+
+        return ("mysql_other", "MySQL 其它")
+    lvl = m.group(1)
+    return {
+        "System": ("mysql_system", "MySQL 系统"),
+        "Warning": ("mysql_warning", "MySQL 警告"),
+        "Note": ("mysql_note", "MySQL 备注"),
+        "Error": ("mysql_error", "MySQL 错误"),
+    }.get(lvl, ("mysql_other", "MySQL 其它"))
+
+
