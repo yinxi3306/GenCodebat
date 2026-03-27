@@ -42,6 +42,65 @@ function Test-TextLikeFile {
   return $true
 }
 
+function Select-RandomSnippet {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object[]] $Candidates,
+    [int] $MaxAttempts = 50
+  )
+  $picked = $null
+  $lines = $null
+  $startLine = 0
+  for ($a = 0; $a -lt $MaxAttempts; $a++) {
+    $tryFile = $Candidates | Get-Random -Count 1
+    if (-not (Test-TextLikeFile -Path $tryFile.FullName)) { continue }
+    try {
+      $tryLines = Read-AllLinesRobust -Path $tryFile.FullName
+    }
+    catch {
+      continue
+    }
+    if ($null -eq $tryLines) { continue }
+    if ($tryLines.Count -ge 10) {
+      $picked = $tryFile
+      $lines = $tryLines
+      $startLine = 1 + (Get-Random -Maximum ($lines.Count - 9))
+      $snippetLines = @($lines[($startLine - 1)..($startLine + 8)])
+      $endLine = $startLine + $snippetLines.Count - 1
+      return [pscustomobject]@{
+        SourcePath = $picked.FullName
+        StartLine  = $startLine
+        EndLine    = $endLine
+        BodyLines  = $snippetLines
+      }
+    }
+  }
+  return $null
+}
+
+function Append-SnippetToFile {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string] $FilePath,
+    [Parameter(Mandatory = $true)]
+    [pscustomobject] $Snippet,
+    [Parameter(Mandatory = $true)]
+    [string] $RunStamp,
+    [Parameter(Mandatory = $true)]
+    [System.Text.Encoding] $Encoding
+  )
+  $nl = [Environment]::NewLine
+  $header = @(
+    ''
+    "===== $RunStamp ====="
+    "# source: $($Snippet.SourcePath)"
+    "# lines: $($Snippet.StartLine)-$($Snippet.EndLine)"
+    ''
+  )
+  $chunk = ($header + $Snippet.BodyLines) -join $nl
+  [System.IO.File]::AppendAllText($FilePath, $chunk + $nl, $Encoding)
+}
+
 $excludeDirs = @('.git', 'node_modules', 'bin', 'obj', 'dist', 'build')
 $allowedExt = @(
   '.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.md', '.txt'
@@ -54,6 +113,18 @@ if (-not (Test-Path -LiteralPath $root -PathType Container)) {
 }
 
 $outRoot = [IO.Path]::GetFullPath($PSScriptRoot)
+$snippetDir = Join-Path $outRoot 'snippets'
+if (-not (Test-Path -LiteralPath $snippetDir)) {
+  New-Item -ItemType Directory -Path $snippetDir | Out-Null
+}
+
+$pathFunction = Join-Path $snippetDir 'Function.class'
+$pathFunctionTest = Join-Path $snippetDir 'FunctionTest.class'
+foreach ($p in @($pathFunction, $pathFunctionTest)) {
+  if (-not (Test-Path -LiteralPath $p)) {
+    [System.IO.File]::WriteAllText($p, '', (New-Object System.Text.UTF8Encoding $false))
+  }
+}
 
 $candidates = @(
   Get-ChildItem -LiteralPath $root -Recurse -File -ErrorAction SilentlyContinue |
@@ -68,53 +139,24 @@ if ($candidates.Count -eq 0) {
   exit 5
 }
 
-$maxAttempts = 50
-$picked = $null
-$lines = $null
-$startLine = 0
-$found = $false
-
-for ($a = 0; $a -lt $maxAttempts; $a++) {
-  $tryFile = $candidates | Get-Random -Count 1
-  if (-not (Test-TextLikeFile -Path $tryFile.FullName)) { continue }
-  try {
-    $tryLines = Read-AllLinesRobust -Path $tryFile.FullName
-  }
-  catch {
-    continue
-  }
-  if ($null -eq $tryLines) { continue }
-  if ($tryLines.Count -ge 10) {
-    $picked = $tryFile
-    $lines = $tryLines
-    $startLine = 1 + (Get-Random -Maximum ($lines.Count - 9))
-    $found = $true
-    break
-  }
-}
-
-if (-not $found) {
-  Write-Error "Could not find a text file with at least 10 lines after $maxAttempts attempts."
+$snippetA = Select-RandomSnippet -Candidates $candidates
+if ($null -eq $snippetA) {
+  Write-Error "Could not find a text file with at least 10 lines after 50 attempts (Function.class block)."
   exit 6
 }
 
-$snippetLines = @($lines[($startLine - 1)..($startLine + 8)])
-$timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-$rand = [guid]::NewGuid().ToString('N').Substring(0, 6)
-$snippetDir = Join-Path $outRoot 'snippets'
-if (-not (Test-Path -LiteralPath $snippetDir)) {
-  New-Item -ItemType Directory -Path $snippetDir | Out-Null
+$snippetB = Select-RandomSnippet -Candidates $candidates
+if ($null -eq $snippetB) {
+  Write-Error "Could not find a text file with at least 10 lines after 50 attempts (FunctionTest.class block)."
+  exit 6
 }
-$outName = "snippet_${timestamp}_$rand.txt"
-$outPath = Join-Path $snippetDir $outName
 
-$relSource = $picked.FullName
-$header = @(
-  "# source: $relSource"
-  "# lines: $startLine-$($startLine + $snippetLines.Count - 1)"
-  ""
-)
+$runStamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-[System.IO.File]::WriteAllLines($outPath, ($header + $snippetLines), $utf8NoBom)
 
-Write-Host "Done. Wrote: $outPath"
+Append-SnippetToFile -FilePath $pathFunction -Snippet $snippetA -RunStamp $runStamp -Encoding $utf8NoBom
+Append-SnippetToFile -FilePath $pathFunctionTest -Snippet $snippetB -RunStamp $runStamp -Encoding $utf8NoBom
+
+Write-Host "Done. Appended to:"
+Write-Host "  $pathFunction"
+Write-Host "  $pathFunctionTest"
