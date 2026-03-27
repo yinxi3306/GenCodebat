@@ -1,30 +1,15 @@
 
-===== 20260327_134549 =====
-# source: D:\workspace\GenCodebat\_smoke_src\sample.txt
-# lines: 4-13
+===== 20260327_135657 =====
+# source: D:\workspace\AIprojectDome\frontend\app.js
+# lines: 6-15
 
-alpha04
-alpha05
-alpha06
-alpha07
-alpha08
-alpha09
-alpha10
-alpha11
-alpha12
-alpha13
+  const r = await fetch(url);
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || r.statusText);
+  }
+  return r.json();
+}
 
-===== 20260327_134912 =====
-# source: D:\workspace\GenCodebat\_smoke_src\sample.txt
-# lines: 7-16
-
-alpha07
-alpha08
-alpha09
-alpha10
-alpha11
-alpha12
-alpha13
-alpha14
-alpha15
-alpha16
+function setStatus(msg) {
+  el("status").textContent = msg || "";

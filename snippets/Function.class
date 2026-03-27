@@ -1,30 +1,15 @@
 
-===== 20260327_134549 =====
-# source: D:\workspace\GenCodebat\_smoke_src\sample.txt
-# lines: 2-11
+===== 20260327_135657 =====
+# source: D:\workspace\AIprojectDome\README.md
+# lines: 9-18
 
-alpha02
-alpha03
-alpha04
-alpha05
-alpha06
-alpha07
-alpha08
-alpha09
-alpha10
-alpha11
+- Python 3.10+（已安装 `pip`）
 
-===== 20260327_134912 =====
-# source: D:\workspace\GenCodebat\_smoke_src\sample.txt
-# lines: 15-24
+### 配置
 
-alpha15
-alpha16
-alpha17
-alpha18
-alpha19
-alpha20
-alpha21
-alpha22
-alpha23
-alpha24
+1. 复制 [backend/.env.example](backend/.env.example) 中的说明，设置环境变量 **`LOG_ROOT`** 为**本机日志目录的绝对路径**（仅该目录下的文件可被列出与读取）。
+2. 未设置 `LOG_ROOT` 时，默认使用**仓库根目录**（便于本地试跑）。
+
+### 安装与启动
+
+在 `backend` 目录执行：
