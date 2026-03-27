@@ -1,0 +1,8 @@
+{
+  "SourceRoot": "D:\\workspace\\GenCodebat\\_smoke_src",
+  "OutputBaseDirectory": "",
+  "SnippetDirectory": "snippets",
+  "FunctionClassFile": "Function.class",
+  "FunctionTestClassFile": "FunctionTest.class",
+  "Iterations": 10
+}

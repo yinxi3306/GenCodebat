@@ -1,10 +1,88 @@
 #Requires -Version 5.1
 param(
-  [Parameter(Mandatory = $true)]
-  [string] $SourceRoot
+  [Parameter(Mandatory = $false)]
+  [string] $SourceRoot,
+
+  [Parameter(Mandatory = $false)]
+  [string] $ConfigPath,
+
+  [switch] $EmitOutputPaths,
+
+  [switch] $EmitIterations
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+  $ConfigPath = Join-Path $PSScriptRoot 'gencodebat.config.json'
+}
+
+$config = $null
+if (Test-Path -LiteralPath $ConfigPath) {
+  $config = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
+}
+
+function Resolve-ConfigRelativePath {
+  param([string] $PathLike)
+  if ([string]::IsNullOrWhiteSpace($PathLike)) { return $null }
+  $t = $PathLike.Trim()
+  if ([IO.Path]::IsPathRooted($t)) { return [IO.Path]::GetFullPath($t) }
+  return [IO.Path]::GetFullPath((Join-Path $PSScriptRoot $t))
+}
+
+$outBase = if ($null -ne $config -and -not [string]::IsNullOrWhiteSpace($config.OutputBaseDirectory)) {
+  Resolve-ConfigRelativePath -PathLike $config.OutputBaseDirectory
+}
+else {
+  [IO.Path]::GetFullPath($PSScriptRoot)
+}
+
+$snippetDirName = if ($null -ne $config -and -not [string]::IsNullOrWhiteSpace($config.SnippetDirectory)) {
+  $config.SnippetDirectory
+}
+else { 'snippets' }
+
+$funcFileName = if ($null -ne $config -and -not [string]::IsNullOrWhiteSpace($config.FunctionClassFile)) {
+  $config.FunctionClassFile
+}
+else { 'Function.class' }
+
+$funcTestFileName = if ($null -ne $config -and -not [string]::IsNullOrWhiteSpace($config.FunctionTestClassFile)) {
+  $config.FunctionTestClassFile
+}
+else { 'FunctionTest.class' }
+
+$snippetDir = [IO.Path]::GetFullPath((Join-Path $outBase $snippetDirName))
+$pathFunction = [IO.Path]::GetFullPath((Join-Path $snippetDir $funcFileName))
+$pathFunctionTest = [IO.Path]::GetFullPath((Join-Path $snippetDir $funcTestFileName))
+
+if ($EmitOutputPaths) {
+  Write-Output ($pathFunction + '|' + $pathFunctionTest)
+  exit 0
+}
+
+if ($EmitIterations) {
+  $iter = 10
+  if ($null -ne $config -and $null -ne $config.Iterations) {
+    try {
+      $iter = [Math]::Max(1, [int]$config.Iterations)
+    }
+    catch {
+      $iter = 10
+    }
+  }
+  Write-Output $iter
+  exit 0
+}
+
+if ([string]::IsNullOrWhiteSpace($SourceRoot) -and $null -ne $config -and -not [string]::IsNullOrWhiteSpace($config.SourceRoot)) {
+  $SourceRoot = $config.SourceRoot
+}
+
+if ([string]::IsNullOrWhiteSpace($SourceRoot)) {
+  Write-Error "SourceRoot is empty. Pass -SourceRoot, or set SourceRoot in gencodebat.config.json next to this script."
+  exit 2
+}
 
 function Test-ExcludedPath {
   param([string] $FullPath, [string[]] $ExcludeNames)
@@ -106,20 +184,16 @@ $allowedExt = @(
   '.cs', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.go', '.rs', '.md', '.txt'
 ) | ForEach-Object { $_.ToLowerInvariant() }
 
-$root = [IO.Path]::GetFullPath($SourceRoot)
+$root = Resolve-ConfigRelativePath -PathLike $SourceRoot
 if (-not (Test-Path -LiteralPath $root -PathType Container)) {
   Write-Error "SourceRoot is not a directory: $root"
   exit 2
 }
 
-$outRoot = [IO.Path]::GetFullPath($PSScriptRoot)
-$snippetDir = Join-Path $outRoot 'snippets'
 if (-not (Test-Path -LiteralPath $snippetDir)) {
   New-Item -ItemType Directory -Path $snippetDir | Out-Null
 }
 
-$pathFunction = Join-Path $snippetDir 'Function.class'
-$pathFunctionTest = Join-Path $snippetDir 'FunctionTest.class'
 foreach ($p in @($pathFunction, $pathFunctionTest)) {
   if (-not (Test-Path -LiteralPath $p)) {
     [System.IO.File]::WriteAllText($p, '', (New-Object System.Text.UTF8Encoding $false))
