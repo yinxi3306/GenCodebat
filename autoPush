@@ -1,0 +1,122 @@
+@echo off
+rem =============================================================================
+rem sample.bat - Loop: random_copy_push.bat -> git add -> commit -> push
+rem Copy to the same folder as: random_copy_push.bat, gencodebat_config.bat
+rem Requires: sample_config.json (iterations), git repo, powershell.exe (read JSON)
+rem Usage:  sample.bat [source-dir] [NOPAUSE]
+rem   No args: uses GC_SOURCE_ROOT from gencodebat_config.bat (file must exist)
+rem   Arg1:    source project directory (overrides GC_SOURCE_ROOT for this run)
+rem   NOPAUSE: as arg1 alone (with config) or arg2 - skips all pause prompts
+rem =============================================================================
+
+setlocal EnableDelayedExpansion
+cd /d "%~dp0"
+
+set "SKIP_PAUSE="
+if /i "%~2"=="NOPAUSE" set "SKIP_PAUSE=1"
+if /i "%~1"=="NOPAUSE" set "SKIP_PAUSE=1"
+
+set "ITERATIONS=10"
+set "JSONFILE=%~dp0sample_config.json"
+if exist "%JSONFILE%" (
+  for /f "usebackq delims=" %%n in (`powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "param([string]$p) try { $j = Get-Content -LiteralPath $p -Raw -Encoding UTF8 ^| ConvertFrom-Json; [string]([Math]::Max(1, [int]$j.iterations)) } catch { '10' }" "%JSONFILE%"`) do set "ITERATIONS=%%n"
+)
+if not defined ITERATIONS set "ITERATIONS=10"
+if !ITERATIONS! LSS 1 set "ITERATIONS=10"
+
+if /i "%~1"=="NOPAUSE" (
+  if not exist "%~dp0gencodebat_config.bat" (
+    echo Error: gencodebat_config.bat not found next to this script.
+    if not defined SKIP_PAUSE pause
+    exit /b 1
+  )
+  set "RCP_FROM_CONFIG=1"
+  set "RCP_SOURCE="
+  goto :after_args
+)
+
+if "%~1"=="" (
+  if not exist "%~dp0gencodebat_config.bat" (
+    echo Usage: %~nx0 [source-dir] [NOPAUSE]
+    echo    Or: %~nx0  with GC_SOURCE_ROOT in gencodebat_config.bat
+    echo   Iterations: sample_config.json -^> "iterations" ^(default 10^)
+    echo Example: %~nx0 D:\workspace\OtherRepo
+    if not defined SKIP_PAUSE pause
+    exit /b 1
+  )
+  set "RCP_FROM_CONFIG=1"
+  set "RCP_SOURCE="
+  goto :after_args
+)
+
+if not exist "%~1\" (
+  echo Error: source path does not exist or is not a directory:
+  echo   %~1
+  if not defined SKIP_PAUSE pause
+  exit /b 1
+)
+set "RCP_FROM_CONFIG="
+set "RCP_SOURCE=%~1"
+
+:after_args
+git rev-parse --is-inside-work-tree >nul 2>&1
+if errorlevel 1 (
+  echo Error: not a git repository.
+  if not defined SKIP_PAUSE pause
+  exit /b 1
+)
+
+set "SNIP1="
+set "SNIP2="
+for /f "usebackq tokens=1,* delims=|" %%a in ('call "%~dp0random_copy_push.bat" __EMIT_PATHS__') do (
+  set "SNIP1=%%a"
+  set "SNIP2=%%b"
+)
+
+if not defined SNIP1 (
+  echo Error: could not resolve snippet paths ^(__EMIT_PATHS__^).
+  if not defined SKIP_PAUSE pause
+  exit /b 1
+)
+
+echo Iterations from sample_config.json: !ITERATIONS!
+echo Snippet files: "!SNIP1!" ^| "!SNIP2!"
+echo.
+
+for /l %%i in (1,1,!ITERATIONS!) do (
+  echo ===== Round %%i / !ITERATIONS! =====
+  if defined RCP_FROM_CONFIG (
+    call "%~dp0random_copy_push.bat" NOPAUSE
+  ) else (
+    call "%~dp0random_copy_push.bat" "!RCP_SOURCE!" NOPAUSE
+  )
+  if errorlevel 1 (
+    echo random_copy_push.bat failed with code !ERRORLEVEL!.
+    if not defined SKIP_PAUSE pause
+    exit /b !ERRORLEVEL!
+  )
+  git add -- "!SNIP1!" "!SNIP2!"
+  git diff --cached --quiet
+  if errorlevel 1 (
+    git commit -m "chore: append random snippets (sample round %%i/!ITERATIONS!)"
+    if errorlevel 1 (
+      echo git commit failed. Configure user.name and user.email if needed.
+      if not defined SKIP_PAUSE pause
+      exit /b 1
+    )
+    git push origin HEAD
+    if errorlevel 1 (
+      echo git push failed. Check remote and credentials.
+      if not defined SKIP_PAUSE pause
+      exit /b 1
+    )
+    echo Round %%i: committed and pushed.
+  ) else (
+    echo Round %%i: no changes to commit.
+  )
+)
+
+echo.
+echo Done: !ITERATIONS! rounds.
+if not defined SKIP_PAUSE pause
+exit /b 0
